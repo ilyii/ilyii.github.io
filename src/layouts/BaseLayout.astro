@@ -48,6 +48,7 @@ const ld = jsonLd && JSON.stringify(jsonLd).replace(/</g, '\\u003c');
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <meta name="author" content={SITE.author} />
+    <meta name="google-site-verification" content={SITE.verification.google} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />

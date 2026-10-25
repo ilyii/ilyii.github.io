@@ -15,7 +15,9 @@ const errors = [];
 const fail = (where, msg) => errors.push(`${where}: ${msg}`);
 
 const files = readdirSync(DIST, { recursive: true }).filter((f) => statSync(join(DIST, f)).isFile());
-const pages = files.filter((f) => f.endsWith('.html'));
+// Search-engine ownership files (e.g. public/google*.html) are not real pages.
+const isVerification = (f) => /^(google[0-9a-f]+|BingSiteAuth|yandex_[0-9a-f]+)\.(html|xml)$/.test(f);
+const pages = files.filter((f) => f.endsWith('.html') && !isVerification(f));
 const html = new Map(pages.map((f) => [f, readFileSync(join(DIST, f), 'utf8')]));
 const decode = (s) => s.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 

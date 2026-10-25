@@ -5,4 +5,6 @@ export const SITE = {
   author: 'ilyi',
   locale: 'en',
   ogLocale: 'en_GB',
+  /** Search Console ownership tokens (meta-tag method). */
+  verification: { google: 'LkxJj_DEncMOghvL0QRn21SwuiIxRFJGVGHKeK9uP58' },
 };
