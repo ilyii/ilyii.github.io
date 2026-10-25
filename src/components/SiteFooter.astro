@@ -1,0 +1,23 @@
+---
+import { SITE } from '../site';
+import { url } from '../utils';
+const year = new Date().getFullYear();
+---
+
+<div class="rule"></div>
+<footer class="sheet footer">
+  <p>{SITE.title} <span>·</span> {SITE.author} <span>·</span> {year}</p>
+  <nav aria-label="Footer">
+    <a href={url('subjects/')}>subjects</a>
+    <a href={url('rss.xml')}>rss</a>
+  </nav>
+</footer>
+
+<style>
+  .footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; min-height: 84px; padding-block: 18px; color: var(--ink-soft); font: 400 1.3rem/1.2 var(--script); }
+  p { margin: 0; }
+  span { color: var(--pencil); }
+  nav { display: flex; gap: 20px; }
+  a { padding: 6px 0; text-decoration: underline; text-decoration-style: wavy; text-decoration-color: transparent; text-underline-offset: 4px; transition: color .15s, text-decoration-color .15s; }
+  a:hover { color: var(--pen); text-decoration-color: var(--pencil); }
+</style>

@@ -1,0 +1,75 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../site';
+import { SUBJECTS, subjectStyle } from '../../subjects';
+import { getPosts, subjectUrl, url, usedSubjects } from '../../utils';
+
+const posts = await getPosts();
+const subjects = usedSubjects(posts);
+const count = (k: string) => posts.filter((p) => p.data.subject === k).length;
+const tilt = [-1.6, 1.1, -.6, 1.8, -1.2, .7];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `Subjects · ${SITE.title}`,
+  url: new URL(url('subjects/'), Astro.site).href,
+  hasPart: subjects.map((k) => ({ '@type': 'CollectionPage', name: SUBJECTS[k].name, url: new URL(subjectUrl(k), Astro.site).href })),
+};
+---
+
+<BaseLayout title="Subjects" description={`All ${SITE.title} entries, sorted into subjects like school exercise books: ${subjects.map((k) => SUBJECTS[k].name).join(', ') || 'none yet'}.`} jsonLd={jsonLd}>
+  <section class="sheet page" aria-labelledby="subjects-h">
+    <a class="back label" href={url('/')}>← contents</a>
+    <h1 id="subjects-h">subjects</h1>
+    <p class="intro">One exercise book per subject. Pick one up.</p>
+
+    {subjects.length ? (
+      <ul class="shelf">
+        {subjects.map((k, i) => {
+          const s = SUBJECTS[k];
+          const n = count(k);
+          return (
+            <li>
+              <a class="book subj" href={subjectUrl(k)} style={`${subjectStyle(k)};--r:${tilt[i % tilt.length]}deg`}>
+                <span class="code" aria-hidden="true">{s.code}</span>
+                <span class="count">{n} {n === 1 ? 'entry' : 'entries'}</span>
+                <dl class="sticker">
+                  <dt>subject</dt><dd>{s.name}</dd>
+                </dl>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    ) : (
+      <p class="intro">The shelf is still empty.</p>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .page { padding-block: 36px 96px; }
+  .back { display: block; width: fit-content; margin-bottom: 44px; }
+  h1 { margin: 0; color: var(--pen); font: 400 clamp(3.6rem, 9vw, 7rem)/.8 var(--hand); letter-spacing: -.03em; }
+  .intro { margin: 20px 0 0; color: var(--ink-soft); font: 400 1.6rem/1.2 var(--script); }
+
+  .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 190px)); gap: clamp(20px, 4vw, 44px); margin: 64px 0 0; padding: 0; list-style: none; }
+  @media (max-width: 520px) { .shelf { grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 44px; } }
+  .book {
+    position: relative; display: grid; grid-template-rows: auto auto 1fr; justify-items: center;
+    aspect-ratio: 3 / 4; padding: 18px 14px 22px 22px;
+    background: var(--c);
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, .22) 0 7px, rgba(255, 255, 255, .12) 7px 9px, transparent 9px);
+    border-radius: 3px 10px 10px 3px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 3px 4px 0 -1px var(--paper), 3px 4px 0 0 var(--edge), 0 18px 30px -16px rgba(0, 0, 0, .45);
+    transform: rotate(var(--r));
+    transition: transform .3s;
+  }
+  .book:hover, .book:focus-visible { transform: rotate(0) translateY(-6px); }
+  .code { color: rgba(255, 255, 255, .92); font: 400 clamp(2.6rem, 6vw, 3.4rem)/1 var(--hand); }
+  .count { margin-top: 4px; color: rgba(255, 255, 255, .85); font: 400 1.15rem/1 var(--script); }
+  .sticker { align-self: end; width: 100%; grid-template-columns: 1fr; transform: rotate(1deg); border-top-width: 1.5px; }
+  .sticker dt { line-height: 1.2; }
+  .sticker dd { min-width: 0; overflow-wrap: anywhere; }
+</style>

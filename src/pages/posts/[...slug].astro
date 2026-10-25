@@ -1,0 +1,265 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../site';
+import { SUBJECTS } from '../../subjects';
+import {
+  getPosts, entryNumbers, formatDate, ogUrl, pad, postUrl, readingTime, subjectUrl, url, type Post,
+} from '../../utils';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  const numbers = entryNumbers(posts);
+  return posts.map((post) => {
+    // Previous / next entry in the same exercise book.
+    const book = posts.filter((p) => p.data.subject === post.data.subject);
+    const i = book.findIndex((p) => p.id === post.id);
+    return {
+      params: { slug: post.id },
+      props: { post, no: numbers.get(post.id) ?? 1, prev: book[i + 1], next: book[i - 1] },
+    };
+  });
+}
+
+interface Props { post: Post; no: number; prev?: Post; next?: Post }
+const { post, no, prev, next } = Astro.props;
+const { Content, headings } = await render(post);
+const { title, description, date, updated, subject } = post.data;
+const s = SUBJECTS[subject];
+const toc = headings.filter((h) => h.depth === 2);
+const showToc = toc.length >= 3;
+const canonical = new URL(postUrl(post), Astro.site).href;
+const image = ogUrl(post.id);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: date.toISOString(),
+  dateModified: (updated ?? date).toISOString(),
+  author: { '@type': 'Person', name: SITE.author },
+  image: new URL(image, Astro.site).href,
+  url: canonical,
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  articleSection: s.name,
+  inLanguage: SITE.locale,
+  wordCount: post.body?.split(/\s+/).filter(Boolean).length,
+  isPartOf: { '@type': 'Blog', name: SITE.title, url: new URL(url('/'), Astro.site).href },
+};
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  image={image}
+  imageAlt={`${title} (${s.name}, no. ${pad(no)})`}
+  publishedTime={date}
+  modifiedTime={updated}
+  subject={subject}
+  jsonLd={jsonLd}
+>
+  <article>
+    <header class="sheet head">
+      <a class="back label" href={url('/')}>← contents</a>
+      <a class="sticker-link" href={subjectUrl(subject)} aria-label={`${s.name}, entry ${pad(no)}. All ${s.name} entries`}>
+        <dl class="sticker" aria-hidden="true">
+          <dt>subject</dt><dd>{s.name}</dd>
+          <dt>no.</dt><dd>{pad(no)}</dd>
+        </dl>
+      </a>
+      <h1>{title}</h1>
+      <p class="dek">{description}</p>
+      <p class="meta label">
+        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        <span>{readingTime(post.body)}</span>
+        {updated && <span>revised <time datetime={updated.toISOString()}>{formatDate(updated, 'short')}</time></span>}
+      </p>
+    </header>
+
+    <div class="rule"></div>
+
+    <div class:list={['sheet', 'layout', { 'has-toc': showToc }]}>
+      {showToc && (
+        <nav class="toc" aria-labelledby="toc-h">
+          <details open>
+            <summary id="toc-h" class="label">on this page</summary>
+            <ol>
+              {toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}
+            </ol>
+          </details>
+        </nav>
+      )}
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+
+    <div class="rule"></div>
+
+    <nav class="sheet pager" aria-label={`More in ${s.name}`}>
+      <p class="label red">more in <a href={subjectUrl(subject)}>{s.name}</a></p>
+      <div class="pager-row">
+        {prev ? (
+          <a href={postUrl(prev)} class="prev"><span class="label">← no. {pad(no - 1)}</span><span class="t">{prev.data.title}</span></a>
+        ) : <span />}
+        {next ? (
+          <a href={postUrl(next)} class="next"><span class="label">no. {pad(no + 1)} →</span><span class="t">{next.data.title}</span></a>
+        ) : (
+          <a href={url('/')} class="next"><span class="label">back to →</span><span class="t">contents</span></a>
+        )}
+      </div>
+    </nav>
+  </article>
+</BaseLayout>
+
+<script>
+  // Code blocks: language label + copy button. Section marks (§): copy a direct link.
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll<HTMLPreElement>('.prose pre').forEach((pre) => {
+      if (pre.parentElement?.classList.contains('code')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'code';
+      const lang = pre.dataset.language;
+      if (lang && lang !== 'plaintext') wrap.dataset.lang = lang;
+      pre.replaceWith(wrap);
+      wrap.append(pre);
+      if (!navigator.clipboard) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'copy';
+      btn.textContent = 'copy';
+      btn.setAttribute('aria-label', 'Copy code');
+      btn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(pre.innerText);
+          btn.textContent = 'copied ✓';
+        } catch {
+          btn.textContent = 'press ⌘C / Ctrl+C';
+          getSelection()?.selectAllChildren(pre);
+        }
+        setTimeout(() => (btn.textContent = 'copy'), 1600);
+      };
+      wrap.append(btn);
+    });
+
+    document.querySelectorAll<HTMLAnchorElement>('.prose .anchor').forEach((a) => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        history.replaceState(history.state, '', a.hash); // keep the ClientRouter's state intact
+        document.getElementById(a.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' });
+        navigator.clipboard?.writeText(a.href).then(() => {
+          a.dataset.copied = '';
+          setTimeout(() => delete a.dataset.copied, 1600);
+        }, () => {}); // copying is a bonus; the URL already points at the section
+      };
+    });
+  });
+</script>
+
+<style>
+  /* Header */
+  .head { position: relative; padding-block: 36px 64px; }
+  .back { margin-bottom: 44px; display: block; width: fit-content; }
+  .sticker-link { display: block; width: fit-content; margin-bottom: 28px; }
+  .sticker-link:hover :global(.sticker) { transform: rotate(0); }
+  .sticker-link :global(.sticker) { transition: transform .25s; }
+  h1 { max-width: 18ch; margin: 0; color: var(--pen); font: 400 clamp(3rem, 7vw, 5.8rem)/.88 var(--hand); letter-spacing: -.03em; text-wrap: balance; }
+  .dek { max-width: 50ch; margin: 26px 0 0; color: var(--ink-soft); font: 400 clamp(1.4rem, 2.4vw, 1.65rem)/1.3 var(--script); text-wrap: pretty; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 24px; font-size: 1.2rem; }
+
+  /* Body layout: table of contents in the right margin on wide screens */
+  .layout { padding-block: 56px 96px; }
+  @media (min-width: 1100px) {
+    .layout.has-toc { display: grid; grid-template-columns: minmax(0, var(--measure)) 1fr; gap: 0 56px; }
+    .has-toc .toc { grid-column: 2; grid-row: 1; }
+    .has-toc .toc details { position: sticky; top: 32px; }
+    .has-toc .prose { grid-column: 1; grid-row: 1; }
+  }
+  .toc { margin-bottom: 40px; }
+  .toc summary { cursor: pointer; list-style: none; }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::before { content: '▸ '; color: var(--pencil); }
+  .toc details[open] summary::before { content: '▾ '; }
+  .toc ol { margin: 12px 0 0; padding: 0 0 0 1.4em; font-size: .95rem; line-height: 1.45; }
+  .toc li { margin: 8px 0; }
+  .toc li::marker { color: var(--pencil); font-family: var(--script); }
+  .toc a { color: var(--ink-soft); transition: color .15s; }
+  .toc a:hover { color: var(--pen); }
+
+  /* Prose: 18px text on 28px lines = one grid square per line */
+  .prose { max-width: var(--measure); font-size: 1.125rem; line-height: var(--cell); overflow-wrap: break-word; }
+  .prose :global(> :first-child) { margin-top: 0; }
+  .prose :global(p), .prose :global(ul), .prose :global(ol), .prose :global(table) { margin: 0 0 var(--cell); }
+  .prose :global(h2), .prose :global(h3) { position: relative; scroll-margin-top: 24px; }
+  .prose :global(h2) { margin: calc(var(--cell) * 2.5) 0 calc(var(--cell) * .5); color: var(--pen); font: 400 2.6rem/1 var(--hand); letter-spacing: -.015em; }
+  .prose :global(h3) { margin: calc(var(--cell) * 1.5) 0 calc(var(--cell) * .25); color: var(--ink); font: 600 1.65rem/1.1 var(--script); }
+  .prose :global(.anchor) { position: absolute; left: -1.25em; top: .15em; padding: 0 .2em; color: var(--pencil); font: 400 1.3rem/1 var(--serif); opacity: .45; text-decoration: none; background: none; transition: opacity .15s; }
+  .prose :global(h3 .anchor) { font-size: 1.1rem; top: .2em; }
+  .prose :global(h2:hover .anchor), .prose :global(h3:hover .anchor), .prose :global(.anchor:focus-visible) { opacity: 1; }
+  .prose :global(.anchor[data-copied])::after { content: 'link copied'; position: absolute; left: 0; top: -1.4em; color: var(--pencil); font: 400 1rem/1 var(--script); white-space: nowrap; }
+  @media (max-width: 920px) {
+    .prose :global(.anchor) { position: static; margin-left: .3em; }
+    .prose :global(.anchor[data-copied])::after { left: auto; }
+  }
+
+  .prose :global(a:not(.anchor)) { color: var(--pen); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--pen) 40%, transparent); text-underline-offset: 3px; transition: background .2s, text-decoration-color .2s; }
+  .prose :global(a:not(.anchor):hover) { text-decoration-color: var(--pencil); background: var(--highlight); }
+  .prose :global(strong) { font-weight: 650; background: linear-gradient(transparent 62%, var(--highlight) 62%); }
+  .prose :global(ul), .prose :global(ol) { padding-left: 1.5em; }
+  .prose :global(li) { margin: 0; padding-left: .3em; }
+  .prose :global(li > ul), .prose :global(li > ol) { margin: 0; }
+  .prose :global(ul > li) { list-style: none; position: relative; }
+  .prose :global(ul > li::before) { content: '—'; position: absolute; left: -1.3em; color: var(--pencil); }
+  .prose :global(ol > li::marker) { color: var(--pencil); font: 600 1.2em var(--script); }
+
+  /* Margin note */
+  .prose :global(blockquote) { position: relative; margin: calc(var(--cell) * 1.5) 0; padding: 4px 0 4px 28px; border-left: 2px solid var(--pencil); color: var(--ink); font: 400 1.5rem/1.3 var(--script); }
+  .prose :global(blockquote p) { margin: 0 0 .5em; }
+  .prose :global(blockquote p:last-child) { margin: 0; }
+
+  /* Code */
+  .prose :global(:not(pre) > code) { padding: .1em .35em; color: var(--ink); background: color-mix(in srgb, var(--pen) 11%, transparent); border-radius: 4px; font: .84em var(--mono); overflow-wrap: anywhere; }
+  .prose :global(.code) { position: relative; margin: calc(var(--cell) * 1.5) 0; }
+  .prose :global(pre) { margin: calc(var(--cell) * 1.5) 0; padding: 22px 22px; overflow-x: auto; background: var(--code-bg) !important; border: 1px solid var(--edge); border-radius: 4px; font: .86rem/1.65 var(--mono); tab-size: 2; }
+  .prose :global(.code pre) { margin: 0; }
+  .prose :global(.code[data-lang])::before { content: attr(data-lang); position: absolute; top: -.85em; left: 14px; z-index: 1; padding: 0 6px; color: var(--ink-soft); background: var(--paper); font: 400 1.05rem/1.2 var(--script); }
+  .prose :global(.copy) { position: absolute; top: 8px; right: 8px; padding: 4px 10px; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--edge); border-radius: 6px; font: 400 1.05rem/1.2 var(--script); cursor: pointer; opacity: 0; transition: opacity .15s, color .15s; }
+  .prose :global(.code:hover .copy), .prose :global(.copy:focus-visible) { opacity: 1; }
+  .prose :global(.copy:hover) { color: var(--pen); }
+  @media (hover: none) { .prose :global(.copy) { opacity: 1; } }
+
+  /* Maths (MathML) */
+  .prose :global(.katex-display) { display: block; margin: calc(var(--cell) * 1.5) 0; padding: 18px 22px; overflow-x: auto; border: 1px dashed var(--edge); border-radius: 4px; }
+  .prose :global(math) { font-size: 1.1em; }
+
+  /* Tables */
+  .prose :global(table) { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; font-size: .95rem; line-height: 1.5; }
+  .prose :global(th), .prose :global(td) { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--edge); text-align: left; vertical-align: top; }
+  .prose :global(th) { color: var(--ink-soft); font: 600 1.15rem/1.2 var(--script); }
+
+  .prose :global(hr) { margin: calc(var(--cell) * 2) 0; border: 0; text-align: center; }
+  .prose :global(hr::after) { content: '~ ~ ~'; color: var(--pencil); font: 1.6rem var(--hand); }
+  .prose :global(img) { margin: calc(var(--cell) * 1.5) auto; padding: 10px; background: #fff; border-radius: 2px; box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .3); }
+  .prose :global(figcaption) { margin-top: -14px; color: var(--ink-soft); text-align: center; font: 400 1.15rem/1.3 var(--script); }
+
+  @media (max-width: 640px) {
+    .head { padding-block: 28px 48px; }
+    .back { margin-bottom: 32px; }
+    .layout { padding-block: 40px 72px; }
+    .prose { font-size: 1.0625rem; }
+    .prose :global(h2) { font-size: 2.3rem; }
+    .prose :global(pre) { margin-inline: -8px; padding: 18px 16px; font-size: .8rem; }
+  }
+
+  /* Pager */
+  .pager { padding-block: 32px 40px; }
+  .pager > .label a { text-decoration: underline; text-decoration-style: wavy; text-underline-offset: 4px; }
+  .pager-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
+  .pager-row a { display: grid; align-content: start; gap: 6px; }
+  .pager .t { color: var(--pen); font: 400 1.9rem/1 var(--hand); text-wrap: balance; transition: color .15s; }
+  .pager-row a:hover .t { color: var(--pencil); }
+  .next { grid-column: 2; text-align: right; }
+  @media (max-width: 560px) { .pager-row { grid-template-columns: 1fr; } .next { grid-column: 1; text-align: left; } }
+</style>

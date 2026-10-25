@@ -1,0 +1,95 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostList from '../components/PostList.astro';
+import { SITE } from '../site';
+import { SUBJECTS, subjectStyle } from '../subjects';
+import { url, getPosts, entryNumbers, formatDate, pad, postUrl, readingTime } from '../utils';
+
+const posts = await getPosts();
+const numbers = entryNumbers(posts);
+const featured = posts.find((p) => p.data.featured) ?? posts[0];
+const rest = posts.filter((p) => p.id !== featured?.id);
+const home = new URL(url('/'), Astro.site).href;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE.title,
+  description: SITE.description,
+  url: home,
+  inLanguage: SITE.locale,
+  author: { '@type': 'Person', name: SITE.author },
+};
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <section class="sheet cover" aria-labelledby="cover-title">
+    <h1 id="cover-title">{SITE.title}<span>.</span></h1>
+    <p class="tagline">{SITE.tagline}</p>
+
+    {featured ? (
+      <>
+        <p class="label red">{featured.data.featured ? 'pinned' : 'latest entry'}</p>
+        <article class="card subj" style={subjectStyle(featured.data.subject)}>
+          <span class="tape" aria-hidden="true"></span>
+          <dl class="sticker">
+            <dt>subject</dt><dd>{SUBJECTS[featured.data.subject].name}</dd>
+            <dt>no.</dt><dd>{pad(numbers.get(featured.id) ?? 0)}</dd>
+          </dl>
+          <h2><a href={postUrl(featured)}>{featured.data.title}</a></h2>
+          <p>{featured.data.description}</p>
+          <div class="card-foot label">
+            <span><time datetime={featured.data.date.toISOString()}>{formatDate(featured.data.date)}</time> · {readingTime(featured.body)}</span>
+            <span class="read" aria-hidden="true">read →</span>
+          </div>
+        </article>
+      </>
+    ) : (
+      <p class="blank">the first page is still blank.</p>
+    )}
+  </section>
+
+  {rest.length > 0 && (
+    <>
+      <div class="rule"></div>
+      <section class="sheet contents" aria-labelledby="contents-h">
+        <div class="head">
+          <h2 id="contents-h" class="label">contents</h2>
+          <a class="label" href={url('subjects/')}>{posts.length} entries · by subject →</a>
+        </div>
+        <PostList posts={rest} numbers={numbers} />
+      </section>
+    </>
+  )}
+</BaseLayout>
+
+<style>
+  .cover { padding-top: clamp(64px, 11vw, 120px); padding-bottom: 88px; }
+  h1 { margin: 0; color: var(--pen); font: 400 clamp(4.4rem, 12.5vw, 10rem)/.8 var(--hand); letter-spacing: -.04em; }
+  h1 span { color: var(--pencil); }
+  .tagline { margin: 18px 0 0; color: var(--ink-soft); font: 400 clamp(1.4rem, 2.6vw, 1.8rem)/1.2 var(--script); }
+  .cover .label.red { margin: 56px 0 20px; }
+  .blank { margin: 56px 0 0; color: var(--ink-soft); font: 400 1.6rem/1.2 var(--script); }
+
+  .card { position: relative; max-width: 760px; padding: clamp(28px, 4vw, 48px); background: var(--paper); border: 1px solid var(--edge); box-shadow: 0 10px 30px -12px rgba(23, 35, 61, .2); transform: rotate(-.6deg); transition: transform .3s; }
+  .card:hover { transform: rotate(0); }
+  .tape { position: absolute; top: -14px; left: 50%; width: 120px; height: 28px; background: var(--tape); transform: translateX(-50%) rotate(-3deg); clip-path: polygon(2% 0, 98% 6%, 100% 100%, 0 94%); }
+  .card .sticker { margin-bottom: 24px; }
+  .card h2 { max-width: 22ch; margin: 0; color: var(--pen); font: 400 clamp(2.5rem, 5vw, 3.8rem)/.95 var(--hand); letter-spacing: -.015em; text-wrap: balance; }
+  .card h2 a::after { content: ''; position: absolute; inset: 0; }
+  .card p { max-width: 58ch; margin: 18px 0 0; color: var(--ink-soft); font-size: 1.05rem; }
+  .card-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 22px; font-size: 1.2rem; }
+  .read { color: var(--pencil); font-weight: 600; }
+
+  .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; padding-bottom: 16px; border-bottom: 1px solid var(--edge); }
+  .head h2 { margin: 0; }
+  .head a { font-size: 1.2rem; transition: color .15s; }
+  .head a:hover { color: var(--pen); }
+  .contents { padding-block: 72px; }
+
+  @media (max-width: 650px) {
+    .cover { padding-top: 56px; padding-bottom: 64px; }
+    .card { transform: none; }
+    .contents { padding-block: 48px; }
+  }
+</style>

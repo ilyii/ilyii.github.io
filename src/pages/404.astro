@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostList from '../components/PostList.astro';
+import { getPosts, entryNumbers, url } from '../utils';
+
+const posts = await getPosts();
+const numbers = entryNumbers(posts);
+---
+
+<BaseLayout title="Page not found" noindex>
+  <section class="sheet page">
+    <p class="label red">404</p>
+    <h1>this page was torn out.</h1>
+    <a class="back label" href={url('/')}>← back to contents</a>
+  </section>
+  {posts.length > 0 && (
+    <>
+      <div class="rule"></div>
+      <section class="sheet recent" aria-label="Recent entries">
+        <p class="label">recent entries</p>
+        <PostList posts={posts.slice(0, 3)} numbers={numbers} />
+      </section>
+    </>
+  )}
+</BaseLayout>
+
+<style>
+  .page { padding-block: 88px 72px; }
+  h1 { margin: 12px 0 32px; color: var(--pen); font: 400 clamp(3.4rem, 8vw, 6.4rem)/.85 var(--hand); letter-spacing: -.03em; }
+  .recent { padding-block: 48px 72px; }
+</style>

@@ -1,0 +1,54 @@
+---
+import { SUBJECTS, subjectStyle } from '../subjects';
+import { formatDate, pad, postUrl, readingTime, type Post } from '../utils';
+
+interface Props {
+  posts: Post[];
+  numbers: Map<string, number>;
+  /** false on a subject page, where every entry is in the same book */
+  showSubject?: boolean;
+}
+const { posts, numbers, showSubject = true } = Astro.props;
+---
+
+<ol class="entries">
+  {posts.map((post) => {
+    const s = SUBJECTS[post.data.subject];
+    const no = pad(numbers.get(post.id) ?? 0);
+    return (
+      <li class="entry subj" style={subjectStyle(post.data.subject)}>
+        <span class="tab" aria-hidden="true">{showSubject ? s.code : 'No.'}<b>{no}</b></span>
+        <div class="body">
+          <h3><a href={postUrl(post)}><span class="hl">{post.data.title}</span></a></h3>
+          <p class="desc">{post.data.description}</p>
+          <p class="meta">
+            {showSubject && <span class="sr">{s.name}, entry {no}. </span>}
+            <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date, 'short')}</time>
+            <b aria-hidden="true">·</b> {readingTime(post.body)}
+          </p>
+        </div>
+      </li>
+    );
+  })}
+</ol>
+
+<style>
+  .entries { margin: 0; padding: 0; list-style: none; }
+  .entry { position: relative; display: grid; grid-template-columns: 64px 1fr; gap: 20px; padding: 28px 0; border-bottom: 1px dashed var(--edge); }
+  .tab { display: grid; justify-items: center; align-self: start; padding: 6px 0 4px; color: var(--c); border: 1.5px solid var(--c); border-radius: 6px; font: 600 1.1rem/1 var(--script); transform: rotate(-2deg); transition: transform .25s, background .25s, color .25s; }
+  .tab b { font: 400 1.9rem/1 var(--hand); }
+  .entry:hover .tab { color: var(--paper); background: var(--c); transform: rotate(0); }
+  h3 { margin: 0; color: var(--pen); font: 400 clamp(2rem, 3.6vw, 2.7rem)/.95 var(--hand); letter-spacing: -.01em; text-wrap: balance; }
+  h3 a::after { content: ''; position: absolute; inset: 0; } /* whole row clickable */
+  .hl { background: linear-gradient(104deg, transparent .1em, var(--highlight) .2em, var(--highlight) calc(100% - .2em), transparent calc(100% - .1em)) 0 88% / 0% 50% no-repeat; transition: background-size .35s ease; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .entry:hover .hl { background-size: 100% 50%; }
+  .desc { max-width: 60ch; margin: 10px 0 0; color: var(--ink-soft); font-size: 1rem; line-height: 1.6; }
+  .meta { margin: 10px 0 0; color: var(--ink-soft); font: 400 1.15rem/1 var(--script); }
+  .meta b { margin: 0 4px; color: var(--pencil); font-weight: 400; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (max-width: 520px) {
+    .entry { grid-template-columns: 48px 1fr; gap: 14px; padding: 22px 0; }
+    .tab { font-size: .95rem; }
+    .tab b { font-size: 1.5rem; }
+  }
+</style>

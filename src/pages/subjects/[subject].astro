@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostList from '../../components/PostList.astro';
+import { SITE } from '../../site';
+import { SUBJECTS, type SubjectKey } from '../../subjects';
+import { getPosts, entryNumbers, subjectUrl, url, usedSubjects, type Post } from '../../utils';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  const numbers = entryNumbers(posts);
+  return usedSubjects(posts).map((subject) => ({
+    params: { subject },
+    props: { subject, posts: posts.filter((p) => p.data.subject === subject), numbers },
+  }));
+}
+
+interface Props { subject: SubjectKey; posts: Post[]; numbers: Map<string, number> }
+const { subject, posts, numbers } = Astro.props;
+const s = SUBJECTS[subject];
+const pageUrl = new URL(subjectUrl(subject), Astro.site).href;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: `${s.name} · ${SITE.title}`,
+  description: s.blurb,
+  url: pageUrl,
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: posts.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: new URL(url(`posts/${p.id}/`), Astro.site).href,
+      name: p.data.title,
+    })),
+  },
+};
+---
+
+<BaseLayout title={s.name} description={`${s.blurb} ${posts.length} ${posts.length === 1 ? 'entry' : 'entries'} by ${SITE.author}.`} subject={subject} jsonLd={jsonLd}>
+  <section class="sheet head" aria-labelledby="subject-h">
+    <a class="back label" href={url('subjects/')}>← all subjects</a>
+    <p class="code label red" aria-hidden="true">{s.code}</p>
+    <h1 id="subject-h">{s.name}</h1>
+    <p class="blurb">{s.blurb}</p>
+  </section>
+
+  <div class="rule"></div>
+
+  <section class="sheet list" aria-label={`${s.name} entries`}>
+    <PostList posts={posts} numbers={numbers} showSubject={false} />
+  </section>
+</BaseLayout>
+
+<style>
+  .head { padding-block: 36px 64px; }
+  .back { display: block; width: fit-content; margin-bottom: 44px; }
+  .code { margin-bottom: 10px; }
+  h1 { margin: 0; color: var(--pen); font: 400 clamp(3.6rem, 9vw, 7rem)/.8 var(--hand); letter-spacing: -.03em; }
+  .blurb { max-width: 48ch; margin: 22px 0 0; color: var(--ink-soft); font: 400 1.6rem/1.25 var(--script); }
+  .list { padding-block: 24px 80px; }
+</style>

@@ -1,0 +1,177 @@
+@import '@fontsource/reenie-beanie/latin-400.css';
+@import '@fontsource/caveat/latin-400.css';
+@import '@fontsource/caveat/latin-600.css';
+@import '@fontsource-variable/source-serif-4/wght.css';
+@import '@fontsource-variable/source-serif-4/wght-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+
+/* ---------- Tokens ---------- */
+:root {
+  --desk: #e3e5df;
+  --paper: #fbfaf4;
+  --ink: #17233d;
+  --ink-soft: #56637a;
+  --pen: #2f62a8;
+  --pencil: #c65d5d;
+  --highlight: rgba(255, 214, 77, .55);
+  --tape: rgba(198, 93, 93, .22);
+  --grid: rgba(50, 103, 174, .10);
+  --edge: rgba(23, 35, 61, .13);
+  --code-bg: #f4f3ec;
+  --pages: 2px 2px 0 -1px var(--paper), 2px 2px 0 0 var(--edge), 5px 4px 0 -2px var(--paper), 5px 4px 0 -1px var(--edge), 8px 7px 0 -3px var(--paper), 8px 7px 0 -2px var(--edge);
+  --shadow: 0 1px 1px rgba(23, 35, 61, .04), 0 12px 24px -6px rgba(23, 35, 61, .1), 0 32px 64px -12px rgba(23, 35, 61, .14);
+
+  --hand: 'Reenie Beanie', 'Caveat', cursive;
+  --script: 'Caveat', cursive;
+  --serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+  --mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* One grid cell = one line of body text, so prose sits on the squares. */
+  --cell: 28px;
+  --margin: clamp(22px, 5vw, 72px);
+  --measure: 680px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --desk: #0c111b;
+  --paper: #161e2e;
+  --ink: #e9ece4;
+  --ink-soft: #a3aec0;
+  --pen: #9bc8ff;
+  --pencil: #ee8a85;
+  --highlight: rgba(238, 196, 64, .28);
+  --tape: rgba(238, 138, 133, .2);
+  --grid: rgba(155, 200, 255, .07);
+  --edge: rgba(211, 224, 245, .14);
+  --code-bg: #111827;
+  --shadow: 0 30px 80px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+/* Subject colour: any element with .subj and the --c-light/--c-dark inline vars */
+.subj { --c: var(--c-light); }
+:root[data-theme='dark'] .subj { --c: var(--c-dark); }
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-padding-top: 32px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  background: var(--desk);
+  background-image: radial-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px);
+  background-size: 4px 4px;
+  font: 400 1.0625rem/1.75 var(--serif);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .25s, color .25s;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+img, svg { display: block; max-width: 100%; height: auto; }
+h1, h2, h3, p { margin-top: 0; }
+::selection { color: var(--paper); background: var(--pen); }
+:focus-visible { outline: 2px dashed var(--pencil); outline-offset: 4px; border-radius: 4px; }
+
+/* ---------- Notebook shell ---------- */
+.desk { padding: clamp(0px, 4vw, 56px) clamp(0px, 4vw, 56px) 72px; }
+.notebook {
+  position: relative;
+  width: min(1120px, 100%);
+  min-height: min(297mm, 100vh);
+  margin: auto;
+  padding-left: var(--margin);
+  background-color: var(--paper);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .14 0 0 0 0 .24 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 220px 220px, var(--cell) var(--cell), var(--cell) var(--cell);
+  border: 1px solid var(--edge);
+  border-radius: 3px 10px 10px 3px;
+  box-shadow: var(--pages), var(--shadow);
+}
+@media (min-width: 880px) {
+  .notebook { min-width: 210mm; }
+}
+/* red margin rule */
+.notebook::before {
+  content: '';
+  position: absolute; z-index: 1; top: 0; bottom: 0;
+  left: var(--margin);
+  border-left: 2px solid var(--pencil);
+  opacity: .75;
+  pointer-events: none;
+}
+/* the subject's cover peeking out along the spine */
+.notebook.subj::after {
+  content: '';
+  position: absolute; top: -1px; bottom: -1px; left: -1px;
+  width: 7px;
+  background: var(--c);
+  border-radius: 3px 0 0 3px;
+  pointer-events: none;
+}
+/* punched holes */
+.binding {
+  position: absolute; z-index: 3; top: 40px; bottom: 40px; left: 12px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  pointer-events: none;
+}
+.binding i {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--desk);
+  box-shadow: inset 1px 2px 3px rgba(0, 0, 0, .22), 0 1px 0 rgba(255, 255, 255, .5);
+}
+.sheet { position: relative; z-index: 2; padding-left: clamp(22px, 4vw, 56px); padding-right: clamp(22px, 6vw, 80px); }
+.rule { border-top: 1px solid var(--edge); margin-left: calc(-1 * var(--margin)); }
+
+/* ---------- Shared bits ---------- */
+.label {
+  margin: 0;
+  color: var(--ink-soft);
+  font: 400 1.35rem/1 var(--script);
+  letter-spacing: .01em;
+}
+.label.red { color: var(--pencil); }
+.back { display: inline-block; color: var(--pen); transition: transform .2s; }
+.back:hover { transform: translateX(-4px); }
+
+/* School-book name label: "subject ___ / no. ___" */
+.sticker {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 0 14px;
+  padding: 8px 16px 6px;
+  background: var(--paper);
+  border: 1.5px solid var(--c);
+  border-top-width: 7px;
+  border-radius: 8px;
+  transform: rotate(-1.2deg);
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .35);
+}
+.sticker dt { color: var(--ink-soft); font: 400 1.1rem/1.6 var(--script); }
+.sticker dd { margin: 0; min-width: 7ch; color: var(--ink); border-bottom: 1px dotted var(--edge); font: 600 1.35rem/1.35 var(--script); }
+
+.skip-link { position: absolute; left: -9999px; }
+.skip-link:focus { left: 16px; top: 16px; z-index: 100; padding: 8px 12px; color: var(--paper); background: var(--ink); }
+
+/* Shiki dual theme */
+:root[data-theme='dark'] .astro-code,
+:root[data-theme='dark'] .astro-code span { color: var(--shiki-dark) !important; background-color: var(--shiki-dark-bg) !important; }
+
+@media (max-width: 640px) {
+  .desk { padding: 0; }
+  .notebook { border: 0; border-radius: 0; box-shadow: none; --margin: 18px; }
+  .binding { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+@media print {
+  body, .desk { background: #fff; padding: 0; }
+  .notebook { box-shadow: none; border: 0; }
+  .binding, .theme, .pager, .footer nav { display: none !important; }
+}

@@ -1,0 +1,63 @@
+---
+import { SITE } from '../site';
+import { url } from '../utils';
+
+const path = Astro.url.pathname;
+const links = [
+  { href: url('/'), label: 'contents', match: (p: string) => p === url('/') || p.startsWith(url('posts/')) },
+  { href: url('subjects/'), label: 'subjects', match: (p: string) => p.startsWith(url('subjects/')) },
+];
+---
+
+<header class="sheet header">
+  <a class="mark" href={url('/')} aria-label={`${SITE.title}, home`}>{SITE.title}<span>.</span></a>
+  <nav aria-label="Primary">
+    {links.map((l) => <a href={l.href} aria-current={l.match(path) ? 'page' : undefined}>{l.label}</a>)}
+    <button class="theme" type="button" aria-label="Dark mode" aria-pressed="false" title="Lights on / off">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7z"/></svg>
+    </button>
+  </nav>
+</header>
+<div class="rule"></div>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const btn = document.querySelector<HTMLButtonElement>('.theme');
+    if (!btn) return;
+    const root = document.documentElement;
+    const sync = () => btn.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));
+    sync();
+    btn.onclick = () => {
+      const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      sync();
+    };
+  });
+</script>
+
+<style>
+  .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 84px; }
+  .mark { color: var(--pen); font: 400 2.4rem/1 var(--hand); letter-spacing: -.03em; transform: rotate(-1.5deg); white-space: nowrap; }
+  .mark span { color: var(--pencil); }
+  nav { display: flex; align-items: center; gap: clamp(12px, 2.5vw, 26px); }
+  nav a { position: relative; padding: 8px 0; color: var(--ink-soft); font: 400 1.4rem/1 var(--script); transition: color .15s; }
+  nav a:hover { color: var(--pen); }
+  nav a[aria-current='page'] { color: var(--ink); }
+  nav a[aria-current='page']::after {
+    content: ''; position: absolute; left: -2px; right: -2px; bottom: 3px; height: 6px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 6' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 15 1, 30 6, 59 2' fill='none' stroke='%23c65d5d' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  }
+  .theme { display: grid; place-items: center; width: 40px; height: 40px; padding: 8px; border: 1.5px solid var(--edge); border-radius: 50% 46% 52% 48%; background: none; color: var(--ink-soft); cursor: pointer; transition: color .15s, border-color .15s, transform .3s; }
+  .theme:hover { color: var(--pen); border-color: var(--pen); transform: rotate(-12deg); }
+  .theme svg { width: 100%; height: 100%; }
+  .moon { display: none !important; }
+  :global(:root[data-theme='dark']) .sun { display: none !important; }
+  :global(:root[data-theme='dark']) .moon { display: block !important; }
+  @media (max-width: 480px) {
+    .mark { font-size: 2rem; }
+    nav { gap: 14px; }
+    nav a { font-size: 1.25rem; }
+  }
+</style>
